@@ -10,7 +10,7 @@ Con la API de Go en ejecución en `127.0.0.1:8080`, inicia Angular con:
 npm start -- --host 0.0.0.0 --port 4200
 ```
 
-Abre `http://localhost:4200/` o usa la IP de este equipo desde otro dispositivo de la red. El servidor de Angular reenvía `/tareas` a Go según `proxy.conf.json`.
+Abre `http://localhost:4200/` o usa la IP de este equipo desde otro dispositivo de la red. Inicia sesión para acceder a las tareas. El servidor de Angular reenvía a Go las rutas de sesión y de tareas definidas en `proxy.conf.json`.
 
 ## Code scaffolding
 

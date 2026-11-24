@@ -1,0 +1,56 @@
+@if (verificando()) {
+  <main class="access-shell"><p role="status">Comprobando sesión…</p></main>
+} @else if (cuenta()) {
+  <app-tareas (sesionVencida)="expirar()">
+    <button accion-sesion type="button" class="logout-button" [disabled]="cerrando()" (click)="salir()">
+      {{ cerrando() ? 'Cerrando…' : 'Cerrar sesión' }}
+    </button>
+    @if (aviso()) {
+      <p aviso-sesion class="alert" role="alert">{{ aviso() }}</p>
+    }
+  </app-tareas>
+} @else {
+  <main class="access-shell">
+    <section class="access-card" aria-labelledby="access-title">
+      <div class="access-brand">
+        <span class="access-mark" aria-hidden="true"><span></span></span>
+        <span>Mis tareas</span>
+      </div>
+      <h1 id="access-title">Iniciar sesión</h1>
+
+      <form (ngSubmit)="entrar()">
+        <label for="usuario">Usuario</label>
+        <input
+          id="usuario"
+          name="usuario"
+          autocomplete="username"
+          maxlength="100"
+          required
+          [ngModel]="usuario()"
+          (ngModelChange)="usuario.set($event)"
+          [readOnly]="entrando()"
+        />
+
+        <label for="password">Contraseña</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          [readOnly]="entrando()"
+        />
+
+        @if (aviso()) {
+          <p class="alert" role="alert">{{ aviso() }}</p>
+        }
+
+        <button type="submit" class="login-button" [disabled]="entrando() || !usuario().trim() || !password()">
+          {{ entrando() ? 'Entrando…' : 'Iniciar sesión' }}
+        </button>
+      </form>
+    </section>
+  </main>
+}

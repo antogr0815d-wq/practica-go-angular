@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Tarea, TareasService } from './tareas.service';
@@ -6,12 +7,13 @@ import { Tarea, TareasService } from './tareas.service';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
-  selector: 'app-root',
+  selector: 'app-tareas',
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
 export class App implements OnInit {
   private readonly api = inject(TareasService);
+  readonly sesionVencida = output<void>();
 
   protected readonly tareas = signal<Tarea[]>([]);
   protected readonly titulo = signal('');
@@ -36,8 +38,8 @@ export class App implements OnInit {
     this.errorCarga.set(false);
     try {
       this.tareas.set(await firstValueFrom(this.api.listar()));
-    } catch {
-      this.errorCarga.set(true);
+    } catch (error) {
+      if (!this.expirarSiCorresponde(error)) this.errorCarga.set(true);
     } finally {
       this.cargando.set(false);
     }
@@ -53,8 +55,10 @@ export class App implements OnInit {
       const nueva = await firstValueFrom(this.api.crear(titulo));
       this.tareas.update((tareas) => [...tareas, nueva]);
       this.titulo.set('');
-    } catch {
-      this.errorOperacion.set('No se pudo guardar la tarea. Inténtalo de nuevo.');
+    } catch (error) {
+      if (!this.expirarSiCorresponde(error)) {
+        this.errorOperacion.set('No se pudo guardar la tarea. Inténtalo de nuevo.');
+      }
     } finally {
       this.guardando.set(false);
     }
@@ -69,9 +73,11 @@ export class App implements OnInit {
     this.reemplazar(cambio);
     try {
       this.reemplazar(await firstValueFrom(this.api.actualizar(cambio)));
-    } catch {
+    } catch (error) {
       this.reemplazar(tarea);
-      this.errorOperacion.set('No se pudo cambiar el estado de la tarea. Inténtalo de nuevo.');
+      if (!this.expirarSiCorresponde(error)) {
+        this.errorOperacion.set('No se pudo cambiar el estado de la tarea. Inténtalo de nuevo.');
+      }
     } finally {
       this.liberar(tarea.id);
     }
@@ -85,11 +91,20 @@ export class App implements OnInit {
     try {
       await firstValueFrom(this.api.eliminar(tarea.id));
       this.tareas.update((tareas) => tareas.filter(({ id }) => id !== tarea.id));
-    } catch {
-      this.errorOperacion.set('No se pudo eliminar la tarea. Inténtalo de nuevo.');
+    } catch (error) {
+      if (!this.expirarSiCorresponde(error)) {
+        this.errorOperacion.set('No se pudo eliminar la tarea. Inténtalo de nuevo.');
+      }
     } finally {
       this.liberar(tarea.id);
     }
+  }
+
+  private expirarSiCorresponde(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse) || error.status !== 401) return false;
+
+    this.sesionVencida.emit();
+    return true;
   }
 
   private reemplazar(tarea: Tarea) {

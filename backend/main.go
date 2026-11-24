@@ -29,22 +29,32 @@ type api struct {
 
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	db, err := abrirBaseDeDatos(ctx)
-	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	auth, err := prepararAutenticacion(ctx, db)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cancel()
 
 	tareas := api{db: db}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		responderJSON(w, http.StatusOK, map[string]string{"mensaje": "¡Bienvenido! El servidor está activo."})
 	})
-	mux.HandleFunc("GET /tareas", tareas.listar)
-	mux.HandleFunc("POST /tareas", tareas.crear)
-	mux.HandleFunc("PUT /tareas", tareas.actualizar)
-	mux.HandleFunc("DELETE /tareas", tareas.eliminar)
+	mux.HandleFunc("POST /login", auth.iniciar)
+	mux.HandleFunc("GET /sesion", auth.exigirSesion(func(w http.ResponseWriter, _ *http.Request, s sesion) {
+		responderJSON(w, http.StatusOK, identidad{Usuario: s.usuario})
+	}))
+	mux.HandleFunc("POST /logout", auth.cerrar)
+	mux.HandleFunc("GET /tareas", auth.proteger(tareas.listar))
+	mux.HandleFunc("POST /tareas", auth.proteger(tareas.crear))
+	mux.HandleFunc("PUT /tareas", auth.proteger(tareas.actualizar))
+	mux.HandleFunc("DELETE /tareas", auth.proteger(tareas.eliminar))
 
 	servidor := &http.Server{
 		Addr:              "0.0.0.0:8080",
@@ -198,8 +208,7 @@ func leerID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 
 func leerTarea(w http.ResponseWriter, r *http.Request) (tarea, bool) {
 	var t tarea
-	cuerpo := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024))
-	if err := cuerpo.Decode(&t); err != nil || cuerpo.Decode(new(any)) != io.EOF {
+	if !leerJSON(w, r, &t) {
 		responderError(w, http.StatusBadRequest, "El cuerpo debe contener una tarea en JSON.")
 		return tarea{}, false
 	}
@@ -209,6 +218,11 @@ func leerTarea(w http.ResponseWriter, r *http.Request) (tarea, bool) {
 		return tarea{}, false
 	}
 	return t, true
+}
+
+func leerJSON(w http.ResponseWriter, r *http.Request, destino any) bool {
+	cuerpo := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024))
+	return cuerpo.Decode(destino) == nil && cuerpo.Decode(new(any)) == io.EOF
 }
 
 func responderErrorBD(w http.ResponseWriter, err error) {
