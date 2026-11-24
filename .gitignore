@@ -1,0 +1,17 @@
+# Dependencias
+node_modules/
+
+# Compilación y archivos temporales
+*.exe
+dist/
+out-tsc/
+.angular/
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+
+# Variables de entorno locales
+.env
+.env.*

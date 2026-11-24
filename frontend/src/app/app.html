@@ -1,0 +1,99 @@
+<main class="workspace">
+  <header class="page-header">
+    <span class="app-mark" aria-hidden="true"><span></span></span>
+    <h1>Mis tareas</h1>
+  </header>
+
+  @if (!cargando() && !errorCarga()) {
+    <section class="progress-card" aria-label="Progreso">
+      <div>
+        <p class="progress-label">Tareas completadas</p>
+        <p class="progress-count"><strong>{{ completadas() }}</strong> de {{ tareas().length }}</p>
+      </div>
+      <div
+        class="progress-ring"
+        [style.--progreso]="progreso() + '%'"
+        role="progressbar"
+        aria-label="Porcentaje de tareas completadas"
+        [attr.aria-valuenow]="progreso()"
+      >
+        <span>{{ progreso() }}%</span>
+      </div>
+    </section>
+  }
+
+  <section class="task-panel" aria-labelledby="list-heading">
+    <form class="compose" (ngSubmit)="crear()">
+      <label for="task-title">Nueva tarea</label>
+      <div class="compose-fields">
+        <input
+          id="task-title"
+          name="titulo"
+          type="text"
+          placeholder="Escribe una tarea…"
+          maxlength="255"
+          required
+          [ngModel]="titulo()"
+          (ngModelChange)="titulo.set($event)"
+          [readOnly]="guardando()"
+        />
+        <button
+          class="primary-button"
+          type="submit"
+          [disabled]="!titulo().trim() || guardando() || cargando() || errorCarga()"
+        >
+          <span aria-hidden="true">+</span>
+          {{ guardando() ? 'Guardando…' : 'Agregar tarea' }}
+        </button>
+      </div>
+    </form>
+
+    @if (errorOperacion()) {
+      <p class="operation-error" role="alert">{{ errorOperacion() }}</p>
+    }
+
+    <div class="task-list" [attr.aria-busy]="cargando()">
+      <h2 id="list-heading">Lista de tareas</h2>
+      @if (cargando()) {
+        <div class="list-state"><p role="status">Cargando tareas…</p></div>
+      } @else if (errorCarga()) {
+        <div class="list-state">
+          <p role="alert">No se pudieron cargar las tareas.</p>
+          <button type="button" class="retry-button" (click)="cargar()">Reintentar</button>
+        </div>
+      } @else if (tareas().length === 0) {
+        <div class="list-state">
+          <span class="empty-mark" aria-hidden="true"><span></span></span>
+          <p>Aún no hay tareas.</p>
+        </div>
+      } @else {
+        <ul>
+          @for (tarea of tareas(); track tarea.id) {
+            <li [class.completed]="tarea.completada" [attr.aria-busy]="ocupadas().has(tarea.id)">
+              <label class="task-label">
+                <input
+                  #casilla
+                  type="checkbox"
+                  [checked]="tarea.completada"
+                  [disabled]="ocupadas().has(tarea.id)"
+                  (change)="cambiarEstado(tarea, casilla.checked)"
+                />
+                <span>{{ tarea.titulo }}</span>
+              </label>
+              <button
+                class="delete-button"
+                type="button"
+                [attr.aria-label]="'Eliminar ' + tarea.titulo"
+                title="Eliminar tarea"
+                [disabled]="ocupadas().has(tarea.id)"
+                (click)="eliminar(tarea)"
+              >
+                <span class="trash-mark" aria-hidden="true"></span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </section>
+</main>
