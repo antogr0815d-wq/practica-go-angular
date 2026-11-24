@@ -3,6 +3,7 @@ node_modules/
 
 # Compilación y archivos temporales
 *.exe
+produccion/
 dist/
 out-tsc/
 .angular/
